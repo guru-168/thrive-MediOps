@@ -2,16 +2,18 @@ import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { Card } from "../components/ui/Card";
 import { MaterialSymbol } from "../components/icons/MaterialSymbol";
+import { ErrorBanner, LoadingBanner } from "../components/ui/AsyncState";
 import { TrendLineChart } from "../components/analytics/TrendLineChart";
 import { HorizontalBarChart } from "../components/analytics/HorizontalBarChart";
 import { RiskBreakdownDonut } from "../components/analytics/RiskBreakdownDonut";
 import {
-  assessmentVolumeTrend,
+  predictionVolumeTrend,
   followUpCompletionTrend,
   getRiskBreakdown,
-  getTrimesterDistribution,
+  getMissedRateDistribution,
 } from "../data/analyticsMock";
-import { prenatalPatients } from "../data/prenatalPatients";
+import { followUpPatients } from "../data/followUpPatients";
+import { useFollowUpRiskPredictions } from "../hooks/useFollowUpRiskPredictions";
 
 const RANGE_OPTIONS = [
   { key: 7, label: "7D" },
@@ -23,18 +25,21 @@ const RANGE_OPTIONS = [
  * Aggregated system-level trends and statistics. Read-only by design -
  * Analytics explains what's happening across the patient population, it
  * doesn't manage individual records (Patients) or run assessments (Risk
- * Assessment).
+ * Assessment). The risk-distribution donut and high-risk-rate KPI are
+ * derived from the live prediction API (useFollowUpRiskPredictions);
+ * everything else here is illustrative dashboard trend data.
  */
 export function AnalyticsPage() {
   const [rangeDays, setRangeDays] = useState<7 | 14 | 30>(14);
+  const { predictions, loading, error, refetch } = useFollowUpRiskPredictions();
 
-  const rangeData = useMemo(() => assessmentVolumeTrend.slice(-rangeDays), [rangeDays]);
-  const riskBreakdown = useMemo(() => getRiskBreakdown(), []);
-  const trimesterDistribution = useMemo(() => getTrimesterDistribution(), []);
+  const rangeData = useMemo(() => predictionVolumeTrend.slice(-rangeDays), [rangeDays]);
+  const riskBreakdown = useMemo(() => getRiskBreakdown(predictions), [predictions]);
+  const missedRateDistribution = useMemo(() => getMissedRateDistribution(), []);
 
-  const totalAssessments = rangeData.reduce((sum, d) => sum + d.assessments, 0);
+  const totalPredictions = rangeData.reduce((sum, d) => sum + d.predictions, 0);
   const totalHighRisk = rangeData.reduce((sum, d) => sum + d.highRisk, 0);
-  const highRiskRate = totalAssessments > 0 ? Math.round((totalHighRisk / totalAssessments) * 100) : 0;
+  const highRiskRate = totalPredictions > 0 ? Math.round((totalHighRisk / totalPredictions) * 100) : 0;
   const avgCompletion = Math.round(
     followUpCompletionTrend.reduce((sum, d) => sum + d.completionRate, 0) / followUpCompletionTrend.length,
   );
@@ -42,7 +47,7 @@ export function AnalyticsPage() {
 
   const trendChartData = rangeData.map((d) => ({
     label: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    value: d.assessments,
+    value: d.predictions,
   }));
   const highRiskTrendData = rangeData.map((d) => ({
     label: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
@@ -58,17 +63,19 @@ export function AnalyticsPage() {
         </p>
       </div>
 
+      {error && <ErrorBanner message={error} onRetry={refetch} />}
+
       <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-gutter">
-        <KpiCard label="Assessments" value={totalAssessments.toLocaleString("en-US")} icon="fact_check" note={`Last ${rangeDays} days`} />
-        <KpiCard label="High-Risk Rate" value={`${highRiskRate}%`} icon="warning" critical note={`Of ${totalAssessments} assessments`} />
+        <KpiCard label="Predictions Run" value={totalPredictions.toLocaleString("en-US")} icon="fact_check" note={`Last ${rangeDays} days`} />
+        <KpiCard label="High-Risk Rate" value={`${highRiskRate}%`} icon="warning" critical note={`Of ${totalPredictions} predictions`} />
         <KpiCard label="Follow-up Completion" value={`${latestCompletion}%`} icon="event_available" note={`8-week avg ${avgCompletion}%`} />
-        <KpiCard label="Patients Tracked" value={prenatalPatients.length.toString()} icon="groups" note="Active directory" />
+        <KpiCard label="Patients Tracked" value={followUpPatients.length.toString()} icon="groups" note="Active directory" />
       </section>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-gutter items-start">
         <Card as="section" className="xl:col-span-2 p-stack-md flex flex-col gap-stack-md">
           <div className="flex items-center justify-between flex-wrap gap-stack-sm border-b border-outline-variant pb-stack-sm">
-            <h3 className="font-title-lg text-title-lg text-on-surface">Assessment Volume</h3>
+            <h3 className="font-title-lg text-title-lg text-on-surface">Prediction Volume</h3>
             <div className="flex items-center gap-1">
               {RANGE_OPTIONS.map((opt) => (
                 <button
@@ -89,7 +96,7 @@ export function AnalyticsPage() {
             </div>
           </div>
           <p className="font-body-sm text-body-sm text-on-surface-variant -mt-2">
-            Total assessments per day (solid) vs. high-risk classifications (dashed). Hover the chart for exact values.
+            Total risk predictions run per day (solid) vs. high-risk classifications (dashed). Hover the chart for exact values.
           </p>
           <TrendLineChart data={trendChartData} secondary={highRiskTrendData} />
         </Card>
@@ -98,7 +105,7 @@ export function AnalyticsPage() {
           <h3 className="font-title-lg text-title-lg text-on-surface border-b border-outline-variant pb-stack-sm">
             Risk Distribution
           </h3>
-          <RiskBreakdownDonut data={riskBreakdown} />
+          {loading ? <LoadingBanner message="Loading current risk distribution…" /> : <RiskBreakdownDonut data={riskBreakdown} />}
         </Card>
 
         <Card as="section" className="p-stack-md flex flex-col gap-stack-md">
@@ -117,9 +124,9 @@ export function AnalyticsPage() {
 
         <Card as="section" className="xl:col-span-2 p-stack-md flex flex-col gap-stack-md">
           <h3 className="font-title-lg text-title-lg text-on-surface border-b border-outline-variant pb-stack-sm">
-            Patients by Trimester
+            Patients by Missed-Appointment Rate
           </h3>
-          <HorizontalBarChart data={trimesterDistribution.map((d) => ({ label: d.label, value: d.count }))} />
+          <HorizontalBarChart data={missedRateDistribution.map((d) => ({ label: d.label, value: d.count }))} />
         </Card>
       </div>
     </>

@@ -10,11 +10,12 @@ import {
 import { MaterialSymbol } from "../components/icons/MaterialSymbol";
 import { PatientRecordDrawer } from "../components/patients/PatientRecordDrawer";
 import { followUpTasks as initialFollowUpTasks } from "../data/followUpTasks";
-import { prenatalPatients } from "../data/prenatalPatients";
-import { getPatientClinicalRecord } from "../data/prenatalPatientDetails";
+import { followUpPatients } from "../data/followUpPatients";
+import { getPatientFollowUpRecord } from "../data/followUpPatientDetails";
+import { useFollowUpRiskPredictions } from "../hooks/useFollowUpRiskPredictions";
 import { formatDueAt, getFollowUpStatus } from "../utils/followUpStatus";
 import type { DashboardOutletContext } from "../components/layout/AppShell";
-import type { FollowUpStatus, FollowUpTask } from "../types/prenatal";
+import type { FollowUpStatus, FollowUpTask } from "../types/followUp";
 
 type StatusFilter = FollowUpStatus | "all";
 
@@ -38,6 +39,7 @@ export function FollowUpsPage() {
   const [tasks, setTasks] = useState<FollowUpTask[]>(initialFollowUpTasks);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const { predictions } = useFollowUpRiskPredictions();
 
   const withStatus = useMemo(
     () => tasks.map((task) => ({ task, status: getFollowUpStatus(task) })),
@@ -67,11 +69,12 @@ export function FollowUpsPage() {
   }
 
   const selectedPatient = selectedPatientId
-    ? (prenatalPatients.find((p) => p.id === selectedPatientId) ?? null)
+    ? (followUpPatients.find((p) => p.id === selectedPatientId) ?? null)
     : null;
   const selectedRecord = selectedPatientId
-    ? (getPatientClinicalRecord(selectedPatientId) ?? null)
+    ? (getPatientFollowUpRecord(selectedPatientId) ?? null)
     : null;
+  const selectedPrediction = selectedPatientId ? (predictions?.get(selectedPatientId) ?? null) : null;
 
   return (
     <>
@@ -210,6 +213,7 @@ export function FollowUpsPage() {
       <PatientRecordDrawer
         patient={selectedPatient}
         record={selectedRecord}
+        prediction={selectedPrediction}
         onClose={() => setSelectedPatientId(null)}
         onStartAssessment={(patientId) => {
           setSelectedPatientId(null);
