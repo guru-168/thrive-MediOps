@@ -1,13 +1,21 @@
 import clsx from "clsx";
 import { MaterialSymbol } from "../icons/MaterialSymbol";
 import { RiskLevelBadge } from "../ui/RiskLevelBadge";
-import type { PregnantPatient } from "../../types/prenatal";
+import type { FollowUpPatient, PredictionResult } from "../../types/followUp";
 
-export type SortKey = "name" | "gestationalAgeWeeks" | "riskLevel";
+export type SortKey = "name" | "missedAppointments" | "riskLevel";
 export type SortDirection = "asc" | "desc";
 
 export interface PatientDirectoryTableProps {
-  patients: PregnantPatient[];
+  patients: FollowUpPatient[];
+  /** Live risk predictions keyed by patient id - null while loading. A
+   * patient with no entry (predictions loaded but this id missing, e.g.
+   * a partial batch failure) renders as "Unavailable" rather than a
+   * fabricated risk level. */
+  predictions: Map<string, PredictionResult> | null;
+  /** True once the batch call has failed - stops rows from reading
+   * "Loading…" forever when they'll never resolve. */
+  predictionsErrored?: boolean;
   sortKey: SortKey;
   sortDirection: SortDirection;
   onSort: (key: SortKey) => void;
@@ -16,15 +24,18 @@ export interface PatientDirectoryTableProps {
 
 const SORTABLE_COLUMNS: { key: SortKey; label: string }[] = [
   { key: "name", label: "Name" },
-  { key: "gestationalAgeWeeks", label: "Gestational Age" },
+  { key: "missedAppointments", label: "Missed Appointments" },
   { key: "riskLevel", label: "Risk Status" },
 ];
 
 /** Patients directory table - search/filter/sort state lives in
  * PatientsPage; this component is purely presentational + row/header
- * interaction callbacks. */
+ * interaction callbacks. Risk status is always sourced from the live
+ * `predictions` map, never from the patient record itself. */
 export function PatientDirectoryTable({
   patients,
+  predictions,
+  predictionsErrored = false,
   sortKey,
   sortDirection,
   onSort,
@@ -54,10 +65,10 @@ export function PatientDirectoryTable({
               </th>
             ))}
             <th className="py-stack-sm px-stack-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-normal">
-              Primary Concern
+              Treatment
             </th>
             <th className="py-stack-sm px-stack-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-normal">
-              Last Assessment
+              Last Appointment
             </th>
             <th className="py-stack-sm px-stack-md font-label-md text-label-md text-on-surface-variant uppercase tracking-wider font-normal">
               Next Follow-up
@@ -75,52 +86,61 @@ export function PatientDirectoryTable({
               </td>
             </tr>
           )}
-          {patients.map((patient) => (
-            <tr
-              key={patient.id}
-              onClick={() => onSelectPatient(patient.id)}
-              className="hover:bg-surface-container-low transition-colors cursor-pointer"
-            >
-              <td className="py-stack-sm px-stack-md font-data-mono text-data-mono text-on-surface-variant">
-                {patient.id}
-              </td>
-              <td className="py-stack-sm px-stack-md">
-                <div className="font-medium">{patient.name}</div>
-                <div className="font-data-mono text-data-mono text-on-surface-variant">
-                  Age {patient.age}
-                </div>
-              </td>
-              <td className="py-stack-sm px-stack-md font-data-mono text-data-mono">
-                {patient.gestationalAgeWeeks}w
-              </td>
-              <td className="py-stack-sm px-stack-md">
-                <RiskLevelBadge level={patient.riskLevel} />
-              </td>
-              <td className="py-stack-sm px-stack-md text-on-surface-variant max-w-[220px] truncate">
-                {patient.primaryConcern}
-              </td>
-              <td className="py-stack-sm px-stack-md text-on-surface-variant">
-                {new Date(patient.lastAssessmentDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
-              </td>
-              <td className="py-stack-sm px-stack-md text-on-surface-variant">
-                {patient.nextFollowUpDate
-                  ? new Date(patient.nextFollowUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
-                  : "—"}
-              </td>
-              <td className="py-stack-sm px-stack-md text-right">
-                <button
-                  type="button"
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    onSelectPatient(patient.id);
-                  }}
-                  className="text-on-surface-variant hover:text-on-surface transition-colors font-medium hover:underline focus-visible:outline-none focus-visible:underline"
-                >
-                  View Details
-                </button>
-              </td>
-            </tr>
-          ))}
+          {patients.map((patient) => {
+            const prediction = predictions?.get(patient.id) ?? null;
+            return (
+              <tr
+                key={patient.id}
+                onClick={() => onSelectPatient(patient.id)}
+                className="hover:bg-surface-container-low transition-colors cursor-pointer"
+              >
+                <td className="py-stack-sm px-stack-md font-data-mono text-data-mono text-on-surface-variant">
+                  {patient.id}
+                </td>
+                <td className="py-stack-sm px-stack-md">
+                  <div className="font-medium">{patient.name}</div>
+                  <div className="font-data-mono text-data-mono text-on-surface-variant">
+                    Age {patient.age}
+                  </div>
+                </td>
+                <td className="py-stack-sm px-stack-md font-data-mono text-data-mono">
+                  {patient.missedAppointments}/{patient.totalAppointments}
+                </td>
+                <td className="py-stack-sm px-stack-md">
+                  {prediction ? (
+                    <RiskLevelBadge level={prediction.riskLevel} />
+                  ) : predictions === null && !predictionsErrored ? (
+                    <span className="font-data-mono text-data-mono text-on-surface-variant">Loading…</span>
+                  ) : (
+                    <span className="font-data-mono text-data-mono text-on-surface-variant">Unavailable</span>
+                  )}
+                </td>
+                <td className="py-stack-sm px-stack-md text-on-surface-variant max-w-[220px] truncate">
+                  {patient.treatmentType}
+                </td>
+                <td className="py-stack-sm px-stack-md text-on-surface-variant">
+                  {new Date(patient.lastAppointmentDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                </td>
+                <td className="py-stack-sm px-stack-md text-on-surface-variant">
+                  {patient.nextFollowUpDate
+                    ? new Date(patient.nextFollowUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                    : "—"}
+                </td>
+                <td className="py-stack-sm px-stack-md text-right">
+                  <button
+                    type="button"
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelectPatient(patient.id);
+                    }}
+                    className="text-on-surface-variant hover:text-on-surface transition-colors font-medium hover:underline focus-visible:outline-none focus-visible:underline"
+                  >
+                    View Details
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

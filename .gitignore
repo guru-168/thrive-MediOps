@@ -12,6 +12,19 @@ dist
 dist-ssr
 *.local
 
+# Backend (Python)
+backend/.venv
+backend/**/__pycache__/
+backend/**/*.pyc
+backend/.pytest_cache
+backend/.env
+# Trained model artifacts are dropped in locally per backend/app/ml/README.md -
+# not committed by default (uncomment to track one intentionally).
+backend/app/ml/*.joblib
+
+.env
+.env.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

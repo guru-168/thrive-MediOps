@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { RiskLevel } from "../../types/prenatal";
+import type { RiskLevel } from "../../types/followUp";
 
 const LABELS: Record<RiskLevel, string> = {
   high: "High Risk",
@@ -12,7 +12,7 @@ export interface RiskLevelBadgeProps {
   className?: string;
 }
 
-/** Pill badge for prenatal risk level - same visual language as the
+/** Pill badge for follow-up risk level - same visual language as the
  * Overview queue's SeverityBadge (border + tint, no new colors), but a
  * separate component since the label set (Low/Moderate/High) and the
  * domain it describes differ from Overview's Critical/Elevated/Routine. */

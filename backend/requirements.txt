@@ -1,0 +1,21 @@
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.30,<1.0
+pydantic>=2.7,<3.0
+pydantic-settings>=2.3,<3.0
+
+# Pinned to the EXACT versions the trained model (app/ml/model.joblib)
+# was pickled with (see D:\Thrive Ml\requirements.txt) - not loose
+# ranges. A newer scikit-learn/xgboost can unpickle it (sklearn logs an
+# InconsistentVersionWarning, xgboost logs a re-export warning) but
+# "might lead to breaking code or invalid results" per sklearn's own
+# docs, so this backend does not take that risk. If you retrain the
+# model, update both files together.
+joblib==1.5.3
+numpy==2.5.2
+pandas==3.0.5
+scikit-learn==1.8.0
+xgboost==3.2.0
+
+# Test-only
+pytest>=8.0,<9.0
+httpx>=0.27,<1.0
