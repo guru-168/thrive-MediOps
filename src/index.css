@@ -1,0 +1,139 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Monochrome Clinical design tokens as CSS custom properties, stored as
+   "R G B" channel triplets so Tailwind's colors can resolve them through
+   rgb(var(--color-x) / <alpha-value>) and still support opacity modifiers
+   (e.g. bg-surface/50). :root holds the light values (unchanged from the
+   original static palette, so light mode is pixel-identical to before);
+   `.dark` overrides the subset of tokens that actually differ in dark
+   mode. Tokens not listed under `.dark` are Material's "fixed" roles,
+   which are defined to stay constant across themes, so they simply fall
+   through to their :root value. AppShell toggles the `dark` class on the
+   app's root element, so every Tailwind color utility (bg-surface,
+   text-on-surface, border-outline-variant, etc.) re-themes automatically
+   with no per-component changes required. */
+:root {
+  --color-background: 251 249 249;
+  --color-error: 186 26 26;
+  --color-error-container: 255 218 214;
+  --color-inverse-on-surface: 242 240 240;
+  --color-inverse-primary: 199 198 198;
+  --color-inverse-surface: 48 48 49;
+  --color-on-background: 27 28 28;
+  --color-on-error: 255 255 255;
+  --color-on-error-container: 147 0 10;
+  --color-on-primary: 255 255 255;
+  --color-on-primary-container: 132 132 132;
+  --color-on-primary-fixed: 27 28 28;
+  --color-on-primary-fixed-variant: 70 71 71;
+  --color-on-secondary: 255 255 255;
+  --color-on-secondary-container: 100 100 100;
+  --color-on-secondary-fixed: 27 28 28;
+  --color-on-secondary-fixed-variant: 70 71 71;
+  --color-on-surface: 27 28 28;
+  --color-on-surface-variant: 76 69 70;
+  --color-on-tertiary: 255 255 255;
+  --color-on-tertiary-container: 132 132 132;
+  --color-on-tertiary-fixed: 27 27 27;
+  --color-on-tertiary-fixed-variant: 71 71 71;
+  --color-outline: 126 117 118;
+  --color-outline-variant: 207 196 197;
+  --color-primary: 0 0 0;
+  --color-primary-container: 27 28 28;
+  --color-primary-fixed: 227 226 226;
+  --color-primary-fixed-dim: 199 198 198;
+  --color-secondary: 94 94 94;
+  --color-secondary-container: 227 226 226;
+  --color-secondary-fixed: 227 226 226;
+  --color-secondary-fixed-dim: 199 198 198;
+  --color-surface: 251 249 249;
+  --color-surface-bright: 251 249 249;
+  --color-surface-container: 239 237 237;
+  --color-surface-container-high: 233 232 231;
+  --color-surface-container-highest: 227 226 226;
+  --color-surface-container-low: 245 243 243;
+  --color-surface-container-lowest: 255 255 255;
+  --color-surface-dim: 219 218 217;
+  --color-surface-tint: 94 94 94;
+  --color-surface-variant: 227 226 226;
+  --color-tertiary: 0 0 0;
+  --color-tertiary-container: 27 27 27;
+  --color-tertiary-fixed: 226 226 226;
+  --color-tertiary-fixed-dim: 198 198 198;
+}
+
+.dark {
+  --color-background: 20 20 20;
+  --color-error: 255 180 171;
+  --color-error-container: 147 0 10;
+  --color-inverse-on-surface: 49 48 48;
+  --color-inverse-primary: 27 28 28;
+  --color-inverse-surface: 229 226 225;
+  --color-on-background: 229 226 225;
+  --color-on-error: 105 0 5;
+  --color-on-error-container: 255 218 214;
+  --color-on-primary: 48 48 49;
+  --color-on-primary-container: 227 226 226;
+  --color-on-secondary: 48 48 49;
+  --color-on-secondary-container: 227 226 226;
+  --color-on-surface: 229 226 225;
+  --color-on-surface-variant: 202 196 195;
+  --color-on-tertiary: 27 27 27;
+  --color-on-tertiary-container: 226 226 226;
+  --color-outline: 148 143 144;
+  --color-outline-variant: 73 70 71;
+  --color-primary: 199 198 198;
+  --color-primary-container: 71 71 71;
+  --color-secondary: 199 198 198;
+  --color-secondary-container: 71 71 71;
+  --color-surface: 20 20 20;
+  --color-surface-bright: 58 57 57;
+  --color-surface-container: 32 31 31;
+  --color-surface-container-high: 43 42 42;
+  --color-surface-container-highest: 54 53 53;
+  --color-surface-container-low: 28 27 27;
+  --color-surface-container-lowest: 14 14 14;
+  --color-surface-dim: 20 20 20;
+  --color-surface-tint: 199 198 198;
+  --color-surface-variant: 73 70 71;
+  --color-tertiary: 198 198 198;
+  --color-tertiary-container: 71 71 71;
+}
+
+/* Material Symbols Outlined - ligature icon font used throughout the UI.
+   code.html's own inline <style> block set the variable-font axes but
+   omitted the font-family declaration required to actually render the
+   ligature text as glyphs (Google's standard usage rule) - without it the
+   icon spans render as literal words. Added here so the icons render as
+   in screen.png; everything else matches the reference exactly. */
+.material-symbols-outlined {
+  font-family: "Material Symbols Outlined";
+  font-weight: normal;
+  font-style: normal;
+  display: inline-block;
+  line-height: 1;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: "liga";
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+.material-symbols-outlined.fill {
+  font-variation-settings:
+    "FILL" 1,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+
+body {
+  margin: 0;
+}
