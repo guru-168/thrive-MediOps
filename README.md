@@ -11,9 +11,9 @@ MediOps turns that uncertainty into a prioritized, explainable workflow.
 Experience **MediOps** live:
 
 **[Open MediOps](https://thrive-healthcare.vercel.app/)**
----
-
 Best experienced in desktop/wide screens.
+
+---
 
 ## The problem
 
