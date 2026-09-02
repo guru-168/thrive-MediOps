@@ -13,6 +13,8 @@ Experience **MediOps** live:
 **[Open MediOps](https://thrive-healthcare.vercel.app/)**
 ---
 
+Best experienced in desktop/wide screens.
+
 ## The problem
 
 Hospitals and care teams manage large numbers of patients who require follow-up.
