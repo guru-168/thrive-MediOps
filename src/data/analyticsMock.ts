@@ -1,21 +1,16 @@
-import { followUpPatients } from "./followUpPatients";
-import type { PredictionResult, RiskLevel } from "../types/followUp";
+import { prenatalPatients } from "./prenatalPatients";
+import type { RiskLevel } from "../types/prenatal";
 
-/** One day's worth of prediction-volume trend data. */
-export interface PredictionVolumePoint {
+/** One day's worth of assessment-volume trend data. */
+export interface AssessmentVolumePoint {
   date: string;
-  predictions: number;
+  assessments: number;
   highRisk: number;
 }
 
-/**
- * 30 days of mock daily prediction volume, most recent last. Analytics'
- * date-range control (7D/14D/30D) simply slices the tail of this array.
- * Illustrative dashboard trend data (how busy the risk-prediction
- * workflow has been) - not itself a prediction, so it stays a
- * deterministic mock rather than requiring a backend call.
- */
-export const predictionVolumeTrend: PredictionVolumePoint[] = Array.from(
+/** 30 days of mock daily assessment volume, most recent last. Analytics'
+ * date-range control (7D/14D/30D) simply slices the tail of this array. */
+export const assessmentVolumeTrend: AssessmentVolumePoint[] = Array.from(
   { length: 30 },
   (_, i) => {
     const dayIndex = i;
@@ -23,12 +18,12 @@ export const predictionVolumeTrend: PredictionVolumePoint[] = Array.from(
     // being random-per-render (a fresh Math.random() each render would
     // make the chart jump on every re-render/filter change).
     const base = 14 + Math.round(6 * Math.sin(dayIndex / 3.2)) + (dayIndex % 5 === 0 ? 4 : 0);
-    const predictions = Math.max(6, base);
-    const highRisk = Math.max(1, Math.round(predictions * (0.12 + 0.05 * Math.sin(dayIndex / 4))));
+    const assessments = Math.max(6, base);
+    const highRisk = Math.max(1, Math.round(assessments * (0.12 + 0.05 * Math.sin(dayIndex / 4))));
     const date = new Date(Date.now() - (29 - dayIndex) * 24 * 60 * 60 * 1000);
     return {
       date: date.toISOString().slice(0, 10),
-      predictions,
+      assessments,
       highRisk,
     };
   },
@@ -46,31 +41,22 @@ export const followUpCompletionTrend: { week: string; completionRate: number }[]
   { week: "Aug 17", completionRate: 91 },
 ];
 
-/** Missed-appointment-rate distribution, derived live from the patient
- * directory's appointment-history fields (not a prediction - just a
- * demographic histogram over synthetic demo data). */
-export function getMissedRateDistribution(): { label: string; count: number }[] {
-  const buckets = { "Low (<20% missed)": 0, "Moderate (20-50% missed)": 0, "High (50%+ missed)": 0 };
-  for (const p of followUpPatients) {
-    const rate = p.totalAppointments > 0 ? p.missedAppointments / p.totalAppointments : 0;
-    if (rate < 0.2) buckets["Low (<20% missed)"] += 1;
-    else if (rate < 0.5) buckets["Moderate (20-50% missed)"] += 1;
-    else buckets["High (50%+ missed)"] += 1;
+/** Gestational-age trimester distribution, derived live from the patient
+ * directory rather than duplicated as separate hand-typed numbers. */
+export function getTrimesterDistribution(): { label: string; count: number }[] {
+  const buckets = { "1st trimester (≤13w)": 0, "2nd trimester (14–27w)": 0, "3rd trimester (28w+)": 0 };
+  for (const p of prenatalPatients) {
+    if (p.gestationalAgeWeeks <= 13) buckets["1st trimester (≤13w)"] += 1;
+    else if (p.gestationalAgeWeeks <= 27) buckets["2nd trimester (14–27w)"] += 1;
+    else buckets["3rd trimester (28w+)"] += 1;
   }
   return Object.entries(buckets).map(([label, count]) => ({ label, count }));
 }
 
-/** Risk-level breakdown, derived from the LIVE prediction map (never
- * from static mock data - see hooks/useFollowUpRiskPredictions). Returns
- * all-zero counts if predictions haven't loaded yet; callers should gate
- * on the hook's own loading/error state before relying on this. */
-export function getRiskBreakdown(
-  predictions: Map<string, PredictionResult> | null,
-): { level: RiskLevel; label: string; count: number }[] {
+/** Risk-level breakdown, derived live from the patient directory. */
+export function getRiskBreakdown(): { level: RiskLevel; label: string; count: number }[] {
   const counts: Record<RiskLevel, number> = { high: 0, moderate: 0, low: 0 };
-  if (predictions) {
-    for (const result of predictions.values()) counts[result.riskLevel] += 1;
-  }
+  for (const p of prenatalPatients) counts[p.riskLevel] += 1;
   return [
     { level: "high", label: "High Risk", count: counts.high },
     { level: "moderate", label: "Moderate Risk", count: counts.moderate },
