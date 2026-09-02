@@ -8,6 +8,9 @@ A missed follow-up is rarely just an empty appointment slot. It can mean delayed
 
 MediOps turns that uncertainty into a prioritized, explainable workflow.
 
+Experience **MediOps** live:
+
+**[Open MediOps](https://thrive-healthcare.vercel.app/)**
 ---
 
 ## The problem
