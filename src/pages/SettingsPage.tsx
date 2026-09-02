@@ -10,9 +10,6 @@ import { MaterialSymbol } from "../components/icons/MaterialSymbol";
 import type { DashboardOutletContext, Theme } from "../components/layout/AppShell";
 
 interface SettingsDraft {
-  name: string;
-  email: string;
-  role: string;
   highRiskAlerts: boolean;
   followUpReminders: boolean;
   weeklyDigest: boolean;
@@ -24,9 +21,6 @@ interface SettingsDraft {
 
 function defaultDraft(theme: Theme): SettingsDraft {
   return {
-    name: "Dr. A. Smith",
-    email: "a.smith@medi-ops.example",
-    role: "Chief of Risk",
     highRiskAlerts: true,
     followUpReminders: true,
     weeklyDigest: false,
@@ -38,8 +32,8 @@ function defaultDraft(theme: Theme): SettingsDraft {
 }
 
 /**
- * Application/user configuration - profile display info, notification
- * preferences, risk-assessment scoring thresholds, and display theme.
+ * Application configuration - notification preferences, risk-assessment
+ * scoring thresholds, and display theme.
  * Everything here is local, in-memory state (no backend yet); Save
  * Changes commits the draft, Reset discards unsaved edits. Theme is the
  * one setting with a real, immediately visible effect (see AppShell).
@@ -73,26 +67,11 @@ export function SettingsPage() {
       <div className="flex flex-col gap-1">
         <h1 className="font-headline-sm text-headline-sm font-bold text-on-surface">Settings</h1>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          Manage your profile, notification preferences, risk-assessment configuration, and display.
+          Manage notification preferences, risk-assessment configuration, and display.
         </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-gutter items-start">
-        <Card as="section" className="p-stack-md flex flex-col gap-stack-md">
-          <h3 className="font-title-lg text-title-lg text-on-surface border-b border-outline-variant pb-stack-sm">
-            Profile
-          </h3>
-          <SettingRow label="Name" htmlFor="settings-name">
-            <TextField id="settings-name" value={draft.name} onChange={(v) => update("name", v)} />
-          </SettingRow>
-          <SettingRow label="Role" htmlFor="settings-role">
-            <TextField id="settings-role" value={draft.role} onChange={(v) => update("role", v)} />
-          </SettingRow>
-          <SettingRow label="Email" htmlFor="settings-email">
-            <TextField id="settings-email" type="email" value={draft.email} onChange={(v) => update("email", v)} />
-          </SettingRow>
-        </Card>
-
         <Card as="section" className="p-stack-md flex flex-col gap-stack-md">
           <h3 className="font-title-lg text-title-lg text-on-surface border-b border-outline-variant pb-stack-sm">
             Notifications
@@ -154,7 +133,7 @@ export function SettingsPage() {
           </SettingRow>
         </Card>
 
-        <Card as="section" className="p-stack-md flex flex-col gap-stack-md">
+        <Card as="section" className="p-stack-md flex flex-col gap-stack-md lg:col-span-2">
           <h3 className="font-title-lg text-title-lg text-on-surface border-b border-outline-variant pb-stack-sm">
             Display
           </h3>
@@ -238,28 +217,6 @@ function ToggleRow({
       </div>
       <Toggle checked={checked} onChange={onChange} label={label} hideLabel />
     </div>
-  );
-}
-
-function TextField({
-  id,
-  value,
-  onChange,
-  type = "text",
-}: {
-  id: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-}) {
-  return (
-    <input
-      id={id}
-      type={type}
-      value={value}
-      onChange={(event) => onChange(event.target.value)}
-      className="w-full bg-surface-container-lowest border border-outline-variant rounded-sm py-2 px-3 text-body-sm font-body-sm text-on-surface focus:outline-none focus:border-outline focus:ring-1 focus:ring-outline transition-colors"
-    />
   );
 }
 

@@ -1,4 +1,4 @@
-import type { FollowUpStatus, FollowUpTask } from "../types/followUp";
+import type { FollowUpStatus, FollowUpTask } from "../types/prenatal";
 
 const HOUR = 60 * 60 * 1000;
 

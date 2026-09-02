@@ -3,18 +3,16 @@ import { useNavigate } from "react-router-dom";
 import { useOutletContext } from "react-router-dom";
 import { Select } from "../components/ui/Select";
 import { Card } from "../components/ui/Card";
-import { ErrorBanner, LoadingBanner } from "../components/ui/AsyncState";
 import {
   PatientDirectoryTable,
   type SortDirection,
   type SortKey,
 } from "../components/patients/PatientDirectoryTable";
 import { PatientRecordDrawer } from "../components/patients/PatientRecordDrawer";
-import { followUpPatients } from "../data/followUpPatients";
-import { getPatientFollowUpRecord } from "../data/followUpPatientDetails";
-import { useFollowUpRiskPredictions } from "../hooks/useFollowUpRiskPredictions";
+import { prenatalPatients } from "../data/prenatalPatients";
+import { getPatientClinicalRecord } from "../data/prenatalPatientDetails";
 import type { DashboardOutletContext } from "../components/layout/AppShell";
-import type { RiskLevel } from "../types/followUp";
+import type { RiskLevel } from "../types/prenatal";
 
 const RISK_LEVEL_ORDER: Record<RiskLevel, number> = { high: 0, moderate: 1, low: 2 };
 
@@ -25,15 +23,11 @@ function matchesSearch(name: string, id: string, query: string): boolean {
 }
 
 /**
- * Patient records screen: the directory of follow-up patients, with
+ * Patient records screen: the directory of pregnant patients, with
  * search, risk-level filtering, sortable columns, and a detail drawer.
  * Owns only patient-record concerns - risk assessment inputs live on
  * the dedicated Risk Assessment page, follow-up scheduling lives on
  * Follow-ups, per the information-architecture rule.
- *
- * Risk level/score shown anywhere on this page always comes from the
- * live `/patients/rank` prediction (useFollowUpRiskPredictions) - never
- * from static mock data.
  */
 export function PatientsPage() {
   const navigate = useNavigate();
@@ -43,27 +37,21 @@ export function PatientsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("asc");
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
-  const { predictions, loading, error, refetch } = useFollowUpRiskPredictions();
-
   const patients = useMemo(() => {
-    const filtered = followUpPatients.filter((p) => {
-      if (!matchesSearch(p.name, p.id, searchQuery)) return false;
-      if (riskFilter === "all") return true;
-      return predictions?.get(p.id)?.riskLevel === riskFilter;
-    });
+    const filtered = prenatalPatients.filter(
+      (p) =>
+        matchesSearch(p.name, p.id, searchQuery) &&
+        (riskFilter === "all" || p.riskLevel === riskFilter),
+    );
     const sorted = [...filtered].sort((a, b) => {
       let cmp = 0;
       if (sortKey === "name") cmp = a.name.localeCompare(b.name);
-      else if (sortKey === "missedAppointments") cmp = a.missedAppointments - b.missedAppointments;
-      else if (sortKey === "riskLevel") {
-        const aLevel = predictions?.get(a.id)?.riskLevel;
-        const bLevel = predictions?.get(b.id)?.riskLevel;
-        cmp = (aLevel ? RISK_LEVEL_ORDER[aLevel] : 99) - (bLevel ? RISK_LEVEL_ORDER[bLevel] : 99);
-      }
+      else if (sortKey === "gestationalAgeWeeks") cmp = a.gestationalAgeWeeks - b.gestationalAgeWeeks;
+      else if (sortKey === "riskLevel") cmp = RISK_LEVEL_ORDER[a.riskLevel] - RISK_LEVEL_ORDER[b.riskLevel];
       return sortDirection === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [searchQuery, riskFilter, sortKey, sortDirection, predictions]);
+  }, [searchQuery, riskFilter, sortKey, sortDirection]);
 
   function handleSort(key: SortKey) {
     if (key === sortKey) {
@@ -75,12 +63,11 @@ export function PatientsPage() {
   }
 
   const selectedPatient = selectedPatientId
-    ? (followUpPatients.find((p) => p.id === selectedPatientId) ?? null)
+    ? (prenatalPatients.find((p) => p.id === selectedPatientId) ?? null)
     : null;
   const selectedRecord = selectedPatientId
-    ? (getPatientFollowUpRecord(selectedPatientId) ?? null)
+    ? (getPatientClinicalRecord(selectedPatientId) ?? null)
     : null;
-  const selectedPrediction = selectedPatientId ? (predictions?.get(selectedPatientId) ?? null) : null;
 
   return (
     <>
@@ -89,13 +76,10 @@ export function PatientsPage() {
           Patient Directory
         </h1>
         <p className="font-body-sm text-body-sm text-on-surface-variant">
-          {followUpPatients.length} patients under active follow-up care. Search, filter, and open a
-          record to review appointment history or start a new risk assessment.
+          {prenatalPatients.length} patients under active prenatal care. Search, filter, and open a
+          record to review clinical history or start a new risk assessment.
         </p>
       </div>
-
-      {error && <ErrorBanner message={error} onRetry={refetch} />}
-      {loading && !error && <LoadingBanner />}
 
       <Card as="section" className="overflow-hidden flex flex-col">
         <div className="p-stack-md border-b border-outline-variant bg-surface flex flex-wrap items-center justify-between gap-stack-sm">
@@ -110,7 +94,6 @@ export function PatientsPage() {
               aria-label="Filter by risk level"
               value={riskFilter}
               onChange={(event) => setRiskFilter(event.target.value as RiskLevel | "all")}
-              disabled={!predictions}
             >
               <option value="all">All Risk Levels</option>
               <option value="high">High Risk</option>
@@ -122,8 +105,6 @@ export function PatientsPage() {
 
         <PatientDirectoryTable
           patients={patients}
-          predictions={predictions}
-          predictionsErrored={Boolean(error)}
           sortKey={sortKey}
           sortDirection={sortDirection}
           onSort={handleSort}
@@ -134,7 +115,6 @@ export function PatientsPage() {
       <PatientRecordDrawer
         patient={selectedPatient}
         record={selectedRecord}
-        prediction={selectedPrediction}
         onClose={() => setSelectedPatientId(null)}
         onStartAssessment={(patientId) => {
           setSelectedPatientId(null);
