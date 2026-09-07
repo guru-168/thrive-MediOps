@@ -5,12 +5,6 @@ export interface RouteMeta {
   /** Top app bar title - differs from navLabel for Overview ("Clinical Dashboard"). */
   title: string;
   icon: string;
-  /**
-   * Reachable from the top-bar account menu rather than the sidebar. Listed
-   * here anyway so the top app bar still resolves a proper title for it
-   * instead of falling back to the product name.
-   */
-  hiddenFromNav?: boolean;
 }
 
 /** Sidebar nav items and top-bar titles, in the order shown in the Stitch reference. */
@@ -31,14 +25,4 @@ export const routeMeta: RouteMeta[] = [
   },
   { path: "/analytics", navLabel: "Analytics", title: "Analytics", icon: "analytics" },
   { path: "/settings", navLabel: "Settings", title: "Settings", icon: "settings" },
-  {
-    path: "/profile",
-    navLabel: "My Profile",
-    title: "My Profile",
-    icon: "person",
-    hiddenFromNav: true,
-  },
 ];
-
-/** The subset of routeMeta rendered as sidebar links. */
-export const navRoutes: RouteMeta[] = routeMeta.filter((route) => !route.hiddenFromNav);

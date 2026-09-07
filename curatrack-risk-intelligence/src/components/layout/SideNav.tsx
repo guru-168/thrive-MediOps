@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import clsx from "clsx";
 import { MaterialSymbol } from "../icons/MaterialSymbol";
-import { navRoutes } from "../../router/routes";
+import { routeMeta } from "../../router/routes";
 
 /** Fixed left sidebar: brand header and primary nav. */
 export function SideNav() {
@@ -17,7 +17,7 @@ export function SideNav() {
       </div>
 
       <div className="flex flex-col gap-stack-sm flex-1">
-        {navRoutes.map((item) => (
+        {routeMeta.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}

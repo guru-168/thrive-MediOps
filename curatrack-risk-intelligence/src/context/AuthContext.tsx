@@ -2,8 +2,6 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase, supabaseConfigError } from "../lib/supabaseClient";
-import { profileFromUser } from "../types/profile";
-import type { ProfileUpdate, UserProfile } from "../types/profile";
 
 /** Turns any thrown value (network/CORS failure, unexpected SDK exception) into a displayable message. */
 function toMessage(err: unknown): string {
@@ -15,12 +13,6 @@ export interface AuthContextValue {
   /** The signed-in user, or null if signed out. */
   user: User | null;
   session: Session | null;
-  /**
-   * Normalized view of the signed-in account (name, role, department,
-   * avatar, email), derived from `user`. Null when signed out. This is
-   * the single source of truth every screen reads for "who am I".
-   */
-  profile: UserProfile | null;
   /** True until the initial session lookup (on app startup) resolves. */
   loading: boolean;
   /** Message from the most recent failed signIn/signUp/signOut call, if any. */
@@ -28,14 +20,8 @@ export interface AuthContextValue {
   /** Set when Supabase env vars are missing/misnamed - auth calls are disabled until this is fixed. */
   configError: string | null;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: string | null }>;
+  signUp: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<{ error: string | null }>;
-  /**
-   * Persists editable profile fields to the authenticated user's Supabase
-   * metadata and updates local auth state, so the change is visible
-   * app-wide (top bar, account menu, profile page) without a refresh.
-   */
-  updateProfile: (input: ProfileUpdate) => Promise<{ error: string | null }>;
   /** Clears a previously set error, e.g. when the user edits the form again. */
   clearError: () => void;
 }
@@ -48,15 +34,6 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
  * onAuthStateChange listener (which also fires after signIn/signUp/signOut),
  * so `user`/`session` are always the single source of truth for whether
  * someone is authenticated - components never call supabase.auth directly.
- *
- * Profile data (full name, role, department, avatar) lives in the auth
- * user's own `user_metadata` rather than a separate `profiles` table:
- * this project has no tables in its public schema, and metadata rides
- * along on the session that already exists, so there is nothing extra to
- * fetch, cache or keep in sync, and Supabase already restricts a user to
- * reading and writing only their own record. Because metadata is
- * user-writable by design, `role`/`department` here are descriptive
- * profile fields only - never use them to grant permissions.
  */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -98,7 +75,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user: session?.user ?? null,
       session,
-      profile: session?.user ? profileFromUser(session.user) : null,
       loading,
       error,
       configError: supabaseConfigError,
@@ -117,52 +93,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: message };
         }
       },
-      async signUp(email, password, fullName) {
+      async signUp(email, password) {
         setError(null);
         if (!supabase) return { error: supabaseConfigError };
         try {
-          // `options.data` seeds the new user's metadata, so an account has
-          // a real name from the moment it is created instead of showing
-          // its email until the user visits the profile page.
-          const { error: signUpError } = await supabase.auth.signUp({
-            email,
-            password,
-            options: fullName?.trim() ? { data: { full_name: fullName.trim() } } : undefined,
-          });
+          const { error: signUpError } = await supabase.auth.signUp({ email, password });
           const message = signUpError?.message ?? null;
           if (message) setError(message);
           return { error: message };
-        } catch (err) {
-          const message = toMessage(err);
-          setError(message);
-          return { error: message };
-        }
-      },
-      async updateProfile(input) {
-        setError(null);
-        if (!supabase) return { error: supabaseConfigError };
-        try {
-          const { data, error: updateError } = await supabase.auth.updateUser({
-            data: {
-              // Blank optional fields are stored as null (not "") so
-              // profileFromUser treats them as genuinely unset and the
-              // profile page omits their rows instead of rendering empties.
-              full_name: input.fullName.trim(),
-              role: input.role.trim() || null,
-              department: input.department.trim() || null,
-            },
-          });
-          if (updateError) {
-            setError(updateError.message);
-            return { error: updateError.message };
-          }
-          // onAuthStateChange also fires USER_UPDATED for this, but applying
-          // the returned user immediately means the new name is on screen
-          // the moment the save resolves, with no intermediate stale frame.
-          if (data.user) {
-            setSession((prev) => (prev ? { ...prev, user: data.user } : prev));
-          }
-          return { error: null };
         } catch (err) {
           const message = toMessage(err);
           setError(message);

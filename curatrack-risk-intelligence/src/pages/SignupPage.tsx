@@ -8,14 +8,12 @@ import { MaterialSymbol } from "../components/icons/MaterialSymbol";
 import { useAuth } from "../context/AuthContext";
 
 interface FieldErrors {
-  fullName?: string;
   email?: string;
   password?: string;
   confirmPassword?: string;
 }
 
 const MIN_PASSWORD_LENGTH = 8;
-const MIN_NAME_LENGTH = 2;
 
 function isValidEmail(value: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
@@ -31,7 +29,6 @@ export function SignupPage() {
   const { signUp, error: authError, configError, clearError } = useAuth();
   const navigate = useNavigate();
 
-  const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -41,11 +38,6 @@ export function SignupPage() {
 
   function validate(): boolean {
     const errors: FieldErrors = {};
-    if (!fullName.trim()) errors.fullName = "Full name is required.";
-    else if (fullName.trim().length < MIN_NAME_LENGTH) {
-      errors.fullName = `Full name must be at least ${MIN_NAME_LENGTH} characters.`;
-    }
-
     if (!email.trim()) errors.email = "Email is required.";
     else if (!isValidEmail(email)) errors.email = "Enter a valid email address.";
 
@@ -67,9 +59,7 @@ export function SignupPage() {
     if (!validate()) return;
 
     setSubmitting(true);
-    // The name is stored on the new account's user metadata, so the
-    // dashboard and profile page show a real person from the first sign-in.
-    const { error } = await signUp(email.trim(), password, fullName.trim());
+    const { error } = await signUp(email.trim(), password);
     setSubmitting(false);
 
     if (!error) {
@@ -108,14 +98,6 @@ export function SignupPage() {
         </div>
       ) : (
         <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-stack-md">
-          <AuthTextField
-            label="Full Name"
-            autoComplete="name"
-            maxLength={80}
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            errorText={fieldErrors.fullName}
-          />
           <AuthTextField
             label="Email"
             type="email"
