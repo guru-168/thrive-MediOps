@@ -2,7 +2,6 @@ import clsx from "clsx";
 import { MaterialSymbol } from "../icons/MaterialSymbol";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
-import { riskDistribution } from "../../data/mockPatients";
 import type { RiskDistributionSlice, SeverityFilter } from "../../types/patient";
 
 const SWATCH_CLASS: Record<RiskDistributionSlice["colorToken"], string> = {
@@ -23,6 +22,7 @@ const BASE_STROKE = 20;
 const EMPHASIZED_STROKE = 25;
 
 function formatPercent(count: number, total: number): string {
+  if (total <= 0) return "—";
   return `${((count / total) * 100).toFixed(1)}%`;
 }
 
@@ -31,6 +31,8 @@ export interface RiskDistributionPanelProps {
   hoveredSeverity: SeverityFilter | null;
   onSeverityChange: (value: SeverityFilter) => void;
   onHoverSeverity: (value: SeverityFilter | null) => void;
+  /** Live slice counts derived from the `/patients/rank` response. */
+  riskDistribution: RiskDistributionSlice[];
 }
 
 /**
@@ -46,8 +48,13 @@ export function RiskDistributionPanel({
   hoveredSeverity,
   onSeverityChange,
   onHoverSeverity,
+  riskDistribution,
 }: RiskDistributionPanelProps) {
+  // With live data the panel can legitimately have nothing to draw (the
+  // batch call is still loading, failed, or returned no patients). Guard
+  // the divisor so the ring renders empty instead of NaN-ing every arc.
   const total = riskDistribution.reduce((sum, slice) => sum + slice.count, 0);
+  const hasData = total > 0;
 
   const displayedSlice =
     riskDistribution.find((s) => s.severity === hoveredSeverity) ??
@@ -84,7 +91,7 @@ export function RiskDistributionPanel({
             className="stroke-surface-container-highest"
           />
           <g transform="rotate(-90 96 96)">
-            {riskDistribution.map((slice, index) => {
+            {hasData && riskDistribution.map((slice, index) => {
               const priorCount = riskDistribution
                 .slice(0, index)
                 .reduce((sum, s) => sum + s.count, 0);
@@ -120,7 +127,7 @@ export function RiskDistributionPanel({
         </svg>
         <div className="absolute inset-0 flex items-center justify-center flex-col pointer-events-none">
           <span className="font-display-lg text-display-lg text-on-surface leading-none transition-all duration-150">
-            {displayedSlice.count}
+            {hasData ? displayedSlice.count : "—"}
           </span>
           <span
             className={clsx(

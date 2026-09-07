@@ -148,13 +148,28 @@ class TrainedModelAdapter(ModelAdapter):
             weighted: dict[str, float] = {}
             for key, val in patient_values.items():
                 imp = importances_by_feature.get(key, 0.05)
-                # Active patient risk factors get full importance weighting
-                w = imp * (0.15 + 0.85 * val) if val > 0 else imp * 0.02
-                weighted[key] = w
+                # A factor the patient does not actually have contributed
+                # nothing to THIS prediction, so its share is exactly zero.
+                # It previously got `imp * 0.02`, which was small but
+                # non-zero - enough to clear the explanation service's
+                # `pct > 0.5` cutoff and surface absent conditions
+                # ("Hypertension diagnosis: None") as reasons for the
+                # patient's risk. Presenting a condition the patient does
+                # not have as a driver of their score is exactly the
+                # fabricated explanation PS-01 prohibits.
+                weighted[key] = imp * (0.15 + 0.85 * val) if val > 0 else 0.0
 
             total = sum(weighted.values())
             if total <= 0:
-                return None
+                # No elevated factor at all. Return explicit zeros rather
+                # than None: None makes build_reasons fall through to
+                # `_fallback_contributions`, i.e. the RULE-BASED weights,
+                # which would then cite distance/treatment_duration/
+                # appointment_frequency - features this model was never
+                # fitted on. An all-zero dict is truthy, so it is used as
+                # is, every factor falls below the cutoff, and the patient
+                # correctly gets the "No elevated risk factors" baseline.
+                return dict.fromkeys(weighted, 0.0)
             return {k: (v / total) * 100 for k, v in weighted.items()}
         except Exception:
             logger.exception("Failed to calculate trained model feature contributions.")

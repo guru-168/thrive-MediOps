@@ -10,11 +10,12 @@ import {
 import { MaterialSymbol } from "../components/icons/MaterialSymbol";
 import { PatientRecordDrawer } from "../components/patients/PatientRecordDrawer";
 import { followUpTasks as initialFollowUpTasks } from "../data/followUpTasks";
-import { prenatalPatients } from "../data/prenatalPatients";
-import { getPatientClinicalRecord } from "../data/prenatalPatientDetails";
+import { followUpPatients } from "../data/followUpPatients";
+import { getPatientFollowUpRecord } from "../data/followUpPatientDetails";
+import { useFollowUpRiskPredictions } from "../hooks/useFollowUpRiskPredictions";
 import { formatDueAt, getFollowUpStatus } from "../utils/followUpStatus";
 import type { DashboardOutletContext } from "../components/layout/AppShell";
-import type { FollowUpStatus, FollowUpTask } from "../types/prenatal";
+import type { FollowUpStatus, FollowUpTask } from "../types/followUp";
 
 type StatusFilter = FollowUpStatus | "all";
 
@@ -38,6 +39,7 @@ export function FollowUpsPage() {
   const [tasks, setTasks] = useState<FollowUpTask[]>(initialFollowUpTasks);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const { predictions } = useFollowUpRiskPredictions();
 
   const withStatus = useMemo(
     () => tasks.map((task) => ({ task, status: getFollowUpStatus(task) })),
@@ -67,11 +69,12 @@ export function FollowUpsPage() {
   }
 
   const selectedPatient = selectedPatientId
-    ? (prenatalPatients.find((p) => p.id === selectedPatientId) ?? null)
+    ? (followUpPatients.find((p) => p.id === selectedPatientId) ?? null)
     : null;
   const selectedRecord = selectedPatientId
-    ? (getPatientClinicalRecord(selectedPatientId) ?? null)
+    ? (getPatientFollowUpRecord(selectedPatientId) ?? null)
     : null;
+  const selectedPrediction = selectedPatientId ? (predictions?.get(selectedPatientId) ?? null) : null;
 
   return (
     <>
@@ -181,7 +184,21 @@ export function FollowUpsPage() {
                 <p className="font-body-sm text-body-sm text-on-surface-variant flex-1 min-w-[180px]">
                   {task.reason}
                 </p>
-                <RiskLevelBadge level={task.riskLevel} />
+                {/*
+                  The patient's CURRENT risk band, from the live
+                  /patients/rank prediction - not `task.riskLevel`, which
+                  is a static human-set scheduling tag. Rendering that tag
+                  in a RiskLevelBadge made this screen contradict the
+                  Patients and Overview screens for the same patient (a
+                  task tagged "high" for someone the model scores
+                  "moderate"). While predictions are loading or the
+                  backend is unreachable, no badge is shown rather than a
+                  stale one. The operational urgency of the task itself is
+                  already carried by FollowUpPriorityBadge beside it.
+                */}
+                {predictions?.get(task.patientId) && (
+                  <RiskLevelBadge level={predictions.get(task.patientId)!.riskLevel} />
+                )}
                 <FollowUpPriorityBadge priority={task.priority} />
                 <span className="font-data-mono text-data-mono text-on-surface-variant min-w-[110px]">
                   {formatDueAt(task.dueAt)}
@@ -210,6 +227,7 @@ export function FollowUpsPage() {
       <PatientRecordDrawer
         patient={selectedPatient}
         record={selectedRecord}
+        prediction={selectedPrediction}
         onClose={() => setSelectedPatientId(null)}
         onStartAssessment={(patientId) => {
           setSelectedPatientId(null);

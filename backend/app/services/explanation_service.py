@@ -63,7 +63,13 @@ def _format_value(factor: str, request: PredictionRequest, features: FeatureSet)
     if factor == "waiting_time":
         return f"{request.waiting_time_days:g} days wait"
     if factor == "no_sms":
-        return "SMS reminder not received"
+        # Must be read off the request, not assumed. This branch used to
+        # return the "not received" string unconditionally, so a patient
+        # with sms_received=1 was told "SMS reminder not received" - a
+        # statement contradicted by their own input. With inactive factors
+        # now weighted at zero this factor should not surface at all for
+        # such a patient, but the value must still be truthful on its own.
+        return "SMS reminder not received" if request.sms_received == 0 else "SMS reminder sent"
     if factor == "hipertension":
         return "Positive" if request.hipertension == 1 else "None"
     if factor == "diabetes":

@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { FollowUpStatus } from "../../types/prenatal";
+import type { FollowUpStatus } from "../../types/followUp";
 
 const LABELS: Record<FollowUpStatus, string> = {
   overdue: "Overdue",

@@ -21,6 +21,60 @@ def _request(**overrides) -> PredictionRequest:
     return PredictionRequest(**payload)
 
 
+def test_format_value_reads_the_sms_flag_in_both_directions():
+    """Unit-level guard for the hardcoded-string regression: the rendered
+    value must follow request.sms_received, never assume it."""
+    not_received = _request(sms_received=0)
+    received = _request(sms_received=1)
+    fmt = explanation_service._format_value
+    assert fmt("no_sms", not_received, build_features(not_received)) == "SMS reminder not received"
+    assert fmt("no_sms", received, build_features(received)) == "SMS reminder sent"
+
+
+def test_trained_adapter_gives_inactive_factors_exactly_zero_contribution():
+    """Regression: inactive factors used to receive `importance * 0.02`
+    instead of 0.0, letting absent conditions clear the reason cutoff."""
+    from app.core.config import get_settings
+    from app.services.model_adapter import TrainedModelAdapter, load_model_adapter
+
+    adapter = load_model_adapter(get_settings())
+    assert isinstance(adapter, TrainedModelAdapter), "trained model artifact must be present for this test"
+
+    request = _request(
+        previous_appointments=10, previous_no_shows=6,
+        hipertension=0, diabetes=0, alcoholism=0, scholarship=0, handcap=0, sms_received=1,
+    )
+    features = build_features(request)
+    contributions = adapter.feature_contributions(features, adapter.predict_proba(features))
+
+    assert contributions is not None
+    for absent in ("hipertension", "diabetes", "alcoholism", "scholarship", "handcap", "no_sms"):
+        assert contributions[absent] == 0.0, f"{absent} should contribute exactly 0 when the patient lacks it"
+    assert contributions["missed_rate"] > 0
+
+
+def test_trained_adapter_returns_zeros_not_none_when_nothing_is_elevated():
+    """Returning None here would hand build_reasons over to the rule-based
+    fallback, which cites features the trained model never saw."""
+    from app.core.config import get_settings
+    from app.services.model_adapter import load_model_adapter
+
+    adapter = load_model_adapter(get_settings())
+    request = _request(
+        age=45, waiting_time_days=0, sms_received=1,
+        previous_appointments=10, previous_no_shows=0,
+        hipertension=0, diabetes=0, alcoholism=0, handcap=0, scholarship=0,
+    )
+    features = build_features(request)
+    contributions = adapter.feature_contributions(features, adapter.predict_proba(features))
+
+    assert contributions is not None, "must not fall through to the rule-based fallback"
+    assert set(contributions.values()) == {0.0}
+
+    reasons = explanation_service.build_reasons(request, features, adapter, 0.0)
+    assert [r.factor for r in reasons] == ["baseline"]
+
+
 def test_reasons_reference_only_known_input_factors():
     request = _request()
     features = build_features(request)

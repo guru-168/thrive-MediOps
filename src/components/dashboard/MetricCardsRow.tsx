@@ -1,10 +1,25 @@
-import { metricSummary } from "../../data/mockPatients";
 import { MetricCard } from "./MetricCard";
 import type { SeverityFilter } from "../../types/patient";
+
+export interface MetricCounts {
+  totalMonitored: number;
+  highRisk: number;
+  medRisk: number;
+  lowRisk: number;
+  /** How many scored patients cleared the model's intervention threshold. */
+  interventionsRequired: number;
+}
 
 export interface MetricCardsRowProps {
   activeSeverity: SeverityFilter;
   onSeverityChange: (value: SeverityFilter) => void;
+  /**
+   * Live counts derived from the `/patients/rank` response, or null while
+   * that call is in flight or has failed. Null renders an em dash rather
+   * than a zero or a stale placeholder - a number on this row must always
+   * be one the backend actually produced.
+   */
+  counts: MetricCounts | null;
 }
 
 /**
@@ -22,23 +37,31 @@ export interface MetricCardsRowProps {
  * columns from `sm`, 4 only once there's enough real content width
  * at `xl`.
  */
-export function MetricCardsRow({ activeSeverity, onSeverityChange }: MetricCardsRowProps) {
+export function MetricCardsRow({ activeSeverity, onSeverityChange, counts }: MetricCardsRowProps) {
   function toggle(severity: SeverityFilter) {
     onSeverityChange(activeSeverity === severity ? "all" : severity);
   }
+
+  /** Em dash while there is no prediction data - never a fabricated zero. */
+  const show = (value: number | undefined) =>
+    counts && value !== undefined ? value.toLocaleString("en-US") : "—";
 
   return (
     <section className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-gutter">
       <MetricCard
         label="Total Monitored"
-        value={metricSummary.totalMonitored.toLocaleString("en-US")}
+        value={show(counts?.totalMonitored)}
         icon="groups"
-        deltaText={metricSummary.totalMonitoredDelta}
-        deltaIcon="arrow_upward"
+        deltaText={
+          counts
+            ? `${counts.interventionsRequired} need intervention`
+            : "Awaiting prediction service"
+        }
+        deltaIcon={counts ? "trending_up" : undefined}
       />
       <MetricCard
         label="High Risk"
-        value={metricSummary.highRisk.toLocaleString("en-US")}
+        value={show(counts?.highRisk)}
         icon="warning"
         critical
         deltaText="Needs immediate review"
@@ -48,7 +71,7 @@ export function MetricCardsRow({ activeSeverity, onSeverityChange }: MetricCards
       />
       <MetricCard
         label="Med Risk"
-        value={metricSummary.medRisk.toLocaleString("en-US")}
+        value={show(counts?.medRisk)}
         icon="priority_high"
         deltaText="Monitor closely"
         onClick={() => toggle("elevated")}
@@ -56,7 +79,7 @@ export function MetricCardsRow({ activeSeverity, onSeverityChange }: MetricCards
       />
       <MetricCard
         label="Low Risk"
-        value={metricSummary.lowRisk.toLocaleString("en-US")}
+        value={show(counts?.lowRisk)}
         icon="check_circle"
         deltaText="Stable condition"
         onClick={() => toggle("routine")}

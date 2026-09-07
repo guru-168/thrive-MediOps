@@ -1,4 +1,4 @@
-import type { FollowUpTask } from "../types/prenatal";
+import type { FollowUpTask } from "../types/followUp";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -14,6 +14,11 @@ function offset(ms: number): string {
  * whenever this runs rather than hard-coded to a fixed calendar date.
  * Frontend-only, in-memory - FollowUpsPage owns mutable state seeded
  * from this array (marking one complete doesn't persist across reload).
+ *
+ * `riskLevel` here is a static, human-set task priority tag (an
+ * operational scheduling label), independent from the live ML/rule-based
+ * prediction shown elsewhere for the same patient - it is never
+ * presented as an AI output.
  */
 export const followUpTasks: FollowUpTask[] = [
   {
@@ -21,7 +26,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1267",
     patientName: "Olivia Bennett",
     riskLevel: "high",
-    reason: "Severe-range blood pressure recheck",
+    reason: "11 missed appointments - priority outreach before next dialysis visit",
     dueAt: offset(-3 * HOUR),
     priority: "high",
     completed: false,
@@ -31,7 +36,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-0987",
     patientName: "Elena Voss",
     riskLevel: "high",
-    reason: "Chronic hypertension medication review",
+    reason: "Long commute + rising missed-visit rate - confirm attendance by phone",
     dueAt: offset(-1 * DAY),
     priority: "high",
     completed: false,
@@ -41,7 +46,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1042",
     patientName: "Amara Chen",
     riskLevel: "high",
-    reason: "Proteinuria screen result review",
+    reason: "2 consecutive missed visits in July - reminder call before next appointment",
     dueAt: offset(45 * 60 * 1000),
     priority: "high",
     completed: false,
@@ -51,17 +56,17 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1155",
     patientName: "Wei Lin",
     riskLevel: "moderate",
-    reason: "Twin growth scan follow-up",
+    reason: "Weekly visit schedule - check in on transport arrangements",
     dueAt: offset(3 * HOUR),
     priority: "medium",
     completed: false,
   },
   {
     id: "fu-5",
-    patientId: "MB-1108",
-    patientName: "Priya Natarajan",
+    patientId: "MB-1301",
+    patientName: "Sofia Marino",
     riskLevel: "moderate",
-    reason: "3-hour glucose tolerance test review",
+    reason: "3 of 10 appointments missed - confirm next cardiac rehab session",
     dueAt: offset(6 * HOUR),
     priority: "medium",
     completed: false,
@@ -71,17 +76,17 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1188",
     patientName: "Naomi Kessler",
     riskLevel: "moderate",
-    reason: "Aspirin prophylaxis compliance check",
+    reason: "Send appointment reminder ahead of biweekly check-in",
     dueAt: offset(1 * DAY),
     priority: "medium",
     completed: false,
   },
   {
     id: "fu-7",
-    patientId: "MB-1301",
-    patientName: "Sofia Marino",
+    patientId: "MB-1108",
+    patientName: "Priya Natarajan",
     riskLevel: "moderate",
-    reason: "Cervical length ultrasound",
+    reason: "One early missed visit - confirm continued engagement",
     dueAt: offset(2 * DAY),
     priority: "medium",
     completed: false,
@@ -91,7 +96,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-0942",
     patientName: "Isabella Rossi",
     riskLevel: "low",
-    reason: "Term induction planning discussion",
+    reason: "Routine physical therapy reminder",
     dueAt: offset(1.5 * DAY),
     priority: "low",
     completed: false,
@@ -101,7 +106,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1223",
     patientName: "Grace Adeyemi",
     riskLevel: "low",
-    reason: "Routine 16-week check-in",
+    reason: "Routine post-op check-in scheduling",
     dueAt: offset(4 * DAY),
     priority: "low",
     completed: false,
@@ -111,7 +116,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1019",
     patientName: "Fatima Al-Rashid",
     riskLevel: "low",
-    reason: "Anatomy scan scheduling",
+    reason: "Standard reminder ahead of next chronic-care check-in",
     dueAt: offset(5 * DAY),
     priority: "low",
     completed: false,
@@ -121,7 +126,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-0876",
     patientName: "Hannah Whitfield",
     riskLevel: "low",
-    reason: "First trimester screening panel",
+    reason: "Physical therapy intake follow-up",
     dueAt: offset(-2 * DAY),
     priority: "low",
     completed: true,
@@ -131,7 +136,7 @@ export const followUpTasks: FollowUpTask[] = [
     patientId: "MB-1340",
     patientName: "Camila Torres",
     riskLevel: "low",
-    reason: "Confirmatory dating ultrasound",
+    reason: "Post-op wound check confirmation",
     dueAt: offset(-4 * HOUR),
     priority: "low",
     completed: true,
