@@ -1,12 +1,10 @@
 import { useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { MaterialSymbol } from "../icons/MaterialSymbol";
 import { SearchInput } from "../ui/SearchInput";
 import { NotificationPanel } from "../notifications/NotificationPanel";
 import { ProfileMenu } from "../profile/ProfileMenu";
-import { Avatar } from "../profile/Avatar";
-import { useAuth } from "../../context/AuthContext";
 import { useDismiss } from "../../hooks/useDismiss";
-import { displayNameFor } from "../../types/profile";
 import type { ClinicalAlert } from "../../types/notification";
 
 export interface TopAppBarProps {
@@ -27,7 +25,7 @@ export function TopAppBar({
   onMarkNotificationRead,
   onMarkAllNotificationsRead,
 }: TopAppBarProps) {
-  const { profile } = useAuth();
+  const navigate = useNavigate();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const notificationsRef = useRef<HTMLDivElement>(null);
@@ -80,22 +78,20 @@ export function TopAppBar({
           <div ref={profileRef} className="relative">
             <button
               type="button"
-              aria-label={profile ? `Account menu for ${displayNameFor(profile)}` : "Account menu"}
+              aria-label="Account menu"
               aria-expanded={profileOpen}
               aria-haspopup="menu"
               onClick={() => setProfileOpen((open) => !open)}
-              className="text-on-surface-variant hover:bg-surface-container rounded-full p-1 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-outline focus-visible:ring-offset-1 flex items-center justify-center"
+              className="text-on-surface-variant hover:bg-surface-container rounded-full p-2 transition-all active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-outline focus-visible:ring-offset-1 flex items-center justify-center"
             >
-              {/* The signed-in account's own initials/photo, from the same
-                  useAuth().profile the menu and profile page read, so
-                  renaming yourself updates this immediately. */}
-              {profile ? (
-                <Avatar profile={profile} size="md" />
-              ) : (
-                <MaterialSymbol name="account_circle" className="m-1" />
-              )}
+              <MaterialSymbol name="account_circle" />
             </button>
-            {profileOpen && <ProfileMenu onClose={() => setProfileOpen(false)} />}
+            {profileOpen && (
+              <ProfileMenu
+                onNavigateToSettings={() => navigate("/settings")}
+                onClose={() => setProfileOpen(false)}
+              />
+            )}
           </div>
         </div>
       </div>
