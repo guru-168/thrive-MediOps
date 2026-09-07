@@ -4,26 +4,31 @@ import { MaterialSymbol } from "../icons/MaterialSymbol";
 import { Card } from "../ui/Card";
 import { Button } from "../ui/Button";
 import { RiskLevelBadge } from "../ui/RiskLevelBadge";
-import type { PatientClinicalRecord, PregnantPatient } from "../../types/prenatal";
+import type { FollowUpPatient, PatientFollowUpRecord, PredictionResult } from "../../types/followUp";
 
 export interface PatientRecordDrawerProps {
-  patient: PregnantPatient | null;
-  record: PatientClinicalRecord | null;
+  patient: FollowUpPatient | null;
+  record: PatientFollowUpRecord | null;
+  /** Live current-risk prediction for this patient, or null while the
+   * batch prediction is still loading/unavailable - the drawer never
+   * shows a risk badge that didn't come from a real API response. */
+  prediction: PredictionResult | null;
   onClose: () => void;
   onStartAssessment: (patientId: string) => void;
 }
 
 /**
- * Slide-in detail panel for the prenatal patient directory (Patients page
- * and, by reuse, the Follow-ups page's row click). Same structural
+ * Slide-in detail panel for the follow-up patient directory (Patients
+ * page and, by reuse, the Follow-ups page's row click). Same structural
  * pattern as Overview's PatientDetailDrawer (backdrop + aside, focus
  * trap/restore, Escape-to-close, elevated z-index so an outside click
- * over the fixed sidebar still dismisses it) but built fresh for the
- * prenatal domain rather than reusing that Overview-only component.
+ * over the fixed sidebar still dismisses it) but built for the follow-up
+ * risk domain rather than reusing that Overview-only component.
  */
 export function PatientRecordDrawer({
   patient,
   record,
+  prediction,
   onClose,
   onStartAssessment,
 }: PatientRecordDrawerProps) {
@@ -31,7 +36,7 @@ export function PatientRecordDrawer({
   const panelRef = useRef<HTMLDivElement>(null);
   const previouslyFocused = useRef<HTMLElement | null>(null);
 
-  const [cached, setCached] = useState<{ patient: PregnantPatient; record: PatientClinicalRecord } | null>(
+  const [cached, setCached] = useState<{ patient: FollowUpPatient; record: PatientFollowUpRecord } | null>(
     null,
   );
   if (patient && record && cached?.patient.id !== patient.id) {
@@ -87,7 +92,7 @@ export function PatientRecordDrawer({
               {p.name}
             </h2>
             <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
-              {p.age} yrs &middot; {p.gestationalAgeWeeks}w gestation &middot; {p.gravidaPara}
+              {p.age} yrs &middot; {p.treatmentType}
             </p>
           </div>
           <button
@@ -101,32 +106,38 @@ export function PatientRecordDrawer({
         </div>
 
         <div className="flex-1 overflow-y-auto p-stack-md flex flex-col gap-stack-lg">
-          <section className="flex items-center justify-between">
+          <section className="flex items-center justify-between gap-stack-sm">
             <div>
               <p className="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">
-                Risk status
+                Current risk status
               </p>
-              <p className="font-body-sm text-body-sm text-on-surface mt-1 max-w-[240px]">
-                {p.primaryConcern}
+              <p className="font-body-sm text-body-sm text-on-surface mt-1 max-w-[260px]">
+                {prediction ? prediction.summary : "Loading current risk prediction…"}
               </p>
             </div>
-            <RiskLevelBadge level={p.riskLevel} className="text-xs px-2.5 py-1" />
+            {prediction ? (
+              <RiskLevelBadge level={prediction.riskLevel} className="text-xs px-2.5 py-1 shrink-0" />
+            ) : (
+              <span className="font-data-mono text-data-mono text-on-surface-variant shrink-0">—</span>
+            )}
           </section>
 
           <section className="grid grid-cols-2 gap-x-stack-md gap-y-stack-sm">
-            <Field label="Blood Pressure" value={r.bloodPressure} />
-            <Field label="BMI" value={r.bmi.toFixed(1)} />
-            <Field label="Due Date" value={new Date(p.dueDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} />
+            <Field label="Distance from Hospital" value={`${r.distanceKm} km`} />
+            <Field label="Treatment Duration" value={`${r.treatmentDurationMonths} mo`} />
+            <Field label="Appointment Frequency" value={`every ${r.appointmentFrequencyDays}d`} />
+            <Field label="Missed Appointments" value={`${r.missedAppointments}/${r.totalAppointments}`} />
+            <Field label="Next Follow-up" value={p.nextFollowUpDate ? new Date(p.nextFollowUpDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—"} />
             <Field label="Attending Clinician" value={p.assignedClinician} />
           </section>
 
-          {r.priorPregnancyComplications.length > 0 && (
+          {r.priorIssues.length > 0 && (
             <section className="flex flex-col gap-stack-sm">
               <h3 className="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">
-                Prior Pregnancy Complications
+                Flagged Attendance Issues
               </h3>
               <div className="flex flex-wrap gap-2">
-                {r.priorPregnancyComplications.map((factor) => (
+                {r.priorIssues.map((factor) => (
                   <span
                     key={factor}
                     className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide text-on-surface-variant border border-outline-variant"
@@ -140,19 +151,19 @@ export function PatientRecordDrawer({
 
           <section className="flex flex-col gap-stack-sm">
             <h3 className="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">
-              Current Pregnancy Notes
+              Care Coordinator Notes
             </h3>
             <Card className="p-stack-sm">
-              <p className="font-body-sm text-body-sm text-on-surface">{r.currentPregnancyNotes}</p>
+              <p className="font-body-sm text-body-sm text-on-surface">{r.currentNotes}</p>
             </Card>
           </section>
 
           <section className="flex flex-col gap-stack-sm">
             <h3 className="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">
-              Assessment History
+              Prediction History
             </h3>
             <div className="flex flex-col">
-              {r.assessmentHistory.map((entry, index) => (
+              {r.predictionHistory.map((entry, index) => (
                 <div key={entry.id} className="flex gap-stack-sm">
                   <div className="flex flex-col items-center">
                     <span
@@ -161,7 +172,7 @@ export function PatientRecordDrawer({
                         index === 0 ? "bg-on-surface" : "bg-surface-container-highest border border-outline-variant",
                       )}
                     />
-                    {index < r.assessmentHistory.length - 1 && (
+                    {index < r.predictionHistory.length - 1 && (
                       <span className="w-0.5 flex-1 bg-outline-variant" />
                     )}
                   </div>
@@ -191,7 +202,7 @@ export function PatientRecordDrawer({
             className="w-full"
             onClick={() => onStartAssessment(p.id)}
           >
-            Start Risk Assessment
+            Run New Risk Assessment
           </Button>
         </div>
       </aside>

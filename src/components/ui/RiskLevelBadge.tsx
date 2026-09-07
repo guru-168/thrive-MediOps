@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import type { RiskLevel } from "../../types/prenatal";
+import type { RiskLevel } from "../../types/followUp";
 
 const LABELS: Record<RiskLevel, string> = {
   high: "High Risk",

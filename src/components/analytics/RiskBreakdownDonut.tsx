@@ -1,6 +1,6 @@
 import { useState } from "react";
 import clsx from "clsx";
-import type { RiskLevel } from "../../types/prenatal";
+import type { RiskLevel } from "../../types/followUp";
 
 export interface RiskBreakdownDonutProps {
   data: { level: RiskLevel; label: string; count: number }[];
