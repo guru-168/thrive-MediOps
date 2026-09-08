@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useOutletContext, useNavigate } from "react-router-dom";
 import { MetricCardsRow } from "../components/dashboard/MetricCardsRow";
 import { PatientQueueTable } from "../components/dashboard/PatientQueueTable";
@@ -9,6 +9,10 @@ import { followUpPatients } from "../data/followUpPatients";
 import { getPatientFollowUpRecord } from "../data/followUpPatientDetails";
 import { useFollowUpRiskPredictions } from "../hooks/useFollowUpRiskPredictions";
 import { buildQueue, buildRiskDistribution, countInterventions } from "../utils/overviewQueue";
+import { buildClinicalReportHtml } from "../utils/clinicalReport";
+import { useAuth } from "../context/AuthContext";
+import { displayNameFor } from "../types/profile";
+import type { ReportStatus } from "../components/dashboard/RiskDistributionPanel";
 import type { DashboardOutletContext } from "../components/layout/AppShell";
 import type { SeverityFilter } from "../types/patient";
 
@@ -37,6 +41,9 @@ export function OverviewPage() {
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
 
   const { predictions, loading, error, refetch } = useFollowUpRiskPredictions();
+  const { profile } = useAuth();
+  const [reportStatus, setReportStatus] = useState<ReportStatus>("idle");
+  const [reportError, setReportError] = useState<string | null>(null);
 
   // Backend ranking order (highest risk first) is preserved - buildQueue
   // iterates the prediction map, which was built from the sorted response.
@@ -68,6 +75,56 @@ export function OverviewPage() {
       interventionsRequired: countInterventions(predictions),
     };
   }, [predictions, queue]);
+
+  /**
+   * Builds the printable report from this page's live state - the same
+   * `queue`, `riskDistribution` and `counts` objects rendered on screen,
+   * so the report can never disagree with the dashboard. No network call
+   * and no re-scoring: the risk numbers were produced by the backend's
+   * /patients/rank response and are passed through untouched.
+   */
+  const handleGenerateReport = useCallback(() => {
+    if (!predictions || !counts) return;
+    setReportStatus("generating");
+    setReportError(null);
+    try {
+      const html = buildClinicalReportHtml({
+        generatedAt: new Date(),
+        queue,
+        distribution: riskDistribution,
+        interventionsRequired: counts.interventionsRequired,
+        // Reported, never assumed - whichever adapter actually scored these rows.
+        modelType: predictions.values().next().value?.modelType ?? null,
+        preparedBy: profile ? displayNameFor(profile) : null,
+      });
+
+      const url = URL.createObjectURL(new Blob([html], { type: "text/html" }));
+      const opened = window.open(url, "_blank", "noopener");
+      if (!opened) {
+        // Popup blocked - fall back to a download so the click still
+        // produces the report rather than silently doing nothing.
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `mediops-risk-report-${new Date().toISOString().slice(0, 10)}.html`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
+      // The new tab/download reads the blob synchronously; revoking on the
+      // next macrotask frees the memory without racing that read.
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+
+      setReportStatus("ready");
+      window.setTimeout(() => setReportStatus((s) => (s === "ready" ? "idle" : s)), 4000);
+    } catch (err) {
+      setReportStatus("error");
+      setReportError(
+        err instanceof Error
+          ? `Could not generate the report: ${err.message}`
+          : "Could not generate the report. Please try again.",
+      );
+    }
+  }, [predictions, counts, queue, riskDistribution, profile]);
 
   const selectedPatient = selectedPatientId
     ? (followUpPatients.find((p) => p.id === selectedPatientId) ?? null)
@@ -102,6 +159,9 @@ export function OverviewPage() {
           onSeverityChange={setSeverityFilter}
           onHoverSeverity={setHoveredSeverity}
           riskDistribution={riskDistribution}
+          onGenerateReport={predictions && counts ? handleGenerateReport : null}
+          reportStatus={reportStatus}
+          reportError={reportError}
         />
       </div>
       <PatientRecordDrawer
