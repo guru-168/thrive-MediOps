@@ -26,6 +26,9 @@ function formatPercent(count: number, total: number): string {
   return `${((count / total) * 100).toFixed(1)}%`;
 }
 
+/** Lifecycle of the Generate Report action, owned by OverviewPage. */
+export type ReportStatus = "idle" | "generating" | "ready" | "error";
+
 export interface RiskDistributionPanelProps {
   activeSeverity: SeverityFilter;
   hoveredSeverity: SeverityFilter | null;
@@ -33,6 +36,16 @@ export interface RiskDistributionPanelProps {
   onHoverSeverity: (value: SeverityFilter | null) => void;
   /** Live slice counts derived from the `/patients/rank` response. */
   riskDistribution: RiskDistributionSlice[];
+  /**
+   * Builds and opens the clinical report from the dashboard's live data.
+   * Null when there is no prediction data to report on (still loading, or
+   * the backend is unreachable) - the action is disabled rather than
+   * producing a report that isn't backed by a real API response.
+   */
+  onGenerateReport: (() => void) | null;
+  reportStatus: ReportStatus;
+  /** User-facing failure message; only set when reportStatus is "error". */
+  reportError: string | null;
 }
 
 /**
@@ -49,6 +62,9 @@ export function RiskDistributionPanel({
   onSeverityChange,
   onHoverSeverity,
   riskDistribution,
+  onGenerateReport,
+  reportStatus,
+  reportError,
 }: RiskDistributionPanelProps) {
   // With live data the panel can legitimately have nothing to draw (the
   // batch call is still loading, failed, or returned no patients). Guard
@@ -178,9 +194,45 @@ export function RiskDistributionPanel({
         })}
       </div>
 
-      <Button variant="secondary" className="mt-stack-sm">
-        Generate Report
-      </Button>
+      {/*
+        Previously a placeholder with no onClick - it looked fully
+        interactive (pointer cursor, hover, active:scale) while doing
+        nothing at all. It now builds a printable report from the same
+        live data this panel renders. Disabled outright when there is no
+        prediction data, so it can never emit a report that isn't backed
+        by a real API response.
+      */}
+      <div className="mt-stack-sm flex flex-col gap-stack-sm">
+        <Button
+          variant="secondary"
+          onClick={onGenerateReport ?? undefined}
+          disabled={!onGenerateReport || reportStatus === "generating"}
+          aria-busy={reportStatus === "generating"}
+          className={clsx(!onGenerateReport && "opacity-50 cursor-not-allowed")}
+        >
+          {reportStatus === "generating" ? "Generating…" : "Generate Report"}
+        </Button>
+
+        <div role="status" aria-live="polite" className="min-h-[20px]">
+          {reportStatus === "ready" && (
+            <p className="flex items-center gap-1 font-body-sm text-body-sm text-on-surface-variant animate-fade-in-up">
+              <MaterialSymbol name="check_circle" className="!text-base" />
+              Report opened in a new tab.
+            </p>
+          )}
+          {reportStatus === "error" && reportError && (
+            <p className="flex items-start gap-1 font-body-sm text-body-sm text-error animate-fade-in-up">
+              <MaterialSymbol name="error" className="!text-base shrink-0 mt-0.5" />
+              <span>{reportError}</span>
+            </p>
+          )}
+          {!onGenerateReport && reportStatus === "idle" && (
+            <p className="font-body-sm text-body-sm text-on-surface-variant">
+              Available once risk predictions have loaded.
+            </p>
+          )}
+        </div>
+      </div>
     </Card>
   );
 }
