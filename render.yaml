@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: thrive-mediops-api
+    runtime: python
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ALLOWED_ORIGINS
+        value: https://thrive-healthcare.vercel.app,http://localhost:5173
+      - key: PYTHON_VERSION
+        value: 3.11.9
