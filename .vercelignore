@@ -1,0 +1,11 @@
+# The frontend build needs none of this. Keeps the upload small and makes
+# sure no local env file can influence the production build.
+backend/
+dist/
+.env
+.env.*
+!.env.example
+node_modules/
+.venv/
+**/__pycache__/
+curatrack-risk-intelligence/
