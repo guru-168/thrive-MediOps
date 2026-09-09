@@ -10,7 +10,7 @@ MediOps turns that uncertainty into a prioritized, explainable workflow.
 
 Experience **MediOps** live:
 
-**[Open MediOps](https://thrive-healthcare.vercel.app/)**
+[**Open MediOps Premium →**](https://latent-thrive.vercel.app)
 Best experienced in desktop/wide screens.
 
 ---
