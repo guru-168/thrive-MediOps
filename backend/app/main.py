@@ -32,10 +32,13 @@ app = FastAPI(
 
 # Configurable via ALLOWED_ORIGINS (comma-separated). Defaults cover the
 # Vite dev server only - never widen this to "*" for a deployment that
-# handles patient data.
+# handles patient data. ALLOWED_ORIGIN_REGEX additionally covers origins
+# that cannot be listed up front (Vercel preview URLs); it is unset by
+# default, and passing None leaves CORS behaviour exactly as before.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.allowed_origins_list,
+    allow_origin_regex=settings.allowed_origin_regex or None,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["*"],

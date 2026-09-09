@@ -1,0 +1,11 @@
+# Keep the build context small and never ship local dev state into the image.
+.venv/
+**/__pycache__/
+**/*.pyc
+.pytest_cache/
+.env
+tests/
+pytest.ini
+README.md
+Dockerfile
+.dockerignore

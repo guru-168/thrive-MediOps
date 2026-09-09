@@ -18,8 +18,77 @@ import type {
   RiskLevel,
 } from "../types/followUp";
 
-const API_BASE_URL: string = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, "") ||
-  "http://localhost:8000";
+/**
+ * Resolves the API base URL once, at module load.
+ *
+ * Vite inlines `import.meta.env.*` at BUILD time, so whatever is (or
+ * isn't) set when the production bundle is built is permanently baked
+ * into the shipped JavaScript. The previous unconditional
+ * `|| "http://localhost:8000"` fallback meant a production build with no
+ * VITE_API_URL shipped a bundle that asked every visitor's own machine
+ * for predictions - which surfaced as the generic "backend is not
+ * running" message rather than the configuration mistake it actually was.
+ *
+ * The localhost fallback is therefore kept for dev only. In a production
+ * build a missing or unusable value produces a specific, actionable
+ * message instead of a misleading network error.
+ */
+function resolveApiBaseUrl(): { baseUrl: string; configError: string | null } {
+  const raw = (import.meta.env.VITE_API_URL as string | undefined)?.trim();
+  const isDev = import.meta.env.DEV;
+
+  if (!raw) {
+    if (isDev) return { baseUrl: "http://localhost:8000", configError: null };
+    return {
+      baseUrl: "",
+      configError:
+        "The prediction service URL is not configured for this deployment. " +
+        "Set VITE_API_URL to the public HTTPS URL of the prediction API and redeploy.",
+    };
+  }
+
+  const baseUrl = raw.replace(/\/+$/, "");
+  if (isDev) return { baseUrl, configError: null };
+
+  // A localhost URL baked into a production bundle points at the visitor's
+  // own machine, never at the API - the exact failure this guard exists to
+  // name explicitly instead of letting it look like an outage.
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[?::1\]?)([:/]|$)/i.test(baseUrl)) {
+    return {
+      baseUrl,
+      configError:
+        `This deployment was built with VITE_API_URL="${baseUrl}", which points at the ` +
+        "visitor's own machine rather than the prediction API. Set VITE_API_URL to the " +
+        "public HTTPS URL of the deployed API and redeploy.",
+    };
+  }
+
+  // Browsers block http:// requests from an https:// page (mixed content),
+  // and the failure is otherwise indistinguishable from the API being down.
+  if (
+    baseUrl.startsWith("http://") &&
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:"
+  ) {
+    return {
+      baseUrl,
+      configError:
+        `VITE_API_URL is "${baseUrl}" (insecure http://) but this page is served over HTTPS, ` +
+        "so the browser blocks the request. Use the API's https:// URL and redeploy.",
+    };
+  }
+
+  return { baseUrl, configError: null };
+}
+
+const { baseUrl: API_BASE_URL, configError: apiConfigError } = resolveApiBaseUrl();
+
+/**
+ * Set when VITE_API_URL is missing or unusable for this build. Non-null
+ * means every API call will fail fast with this message rather than
+ * attempting a request that cannot succeed.
+ */
+export { apiConfigError };
 
 /** Thrown for any failed API call - network failure, non-2xx response,
  * or a response that doesn't match the expected shape. Pages catch this
@@ -43,6 +112,10 @@ export interface HealthStatus {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // Fail fast with the real reason rather than emitting a request that
+  // provably cannot reach the API.
+  if (apiConfigError) throw new ApiError(apiConfigError);
+
   let response: Response;
   try {
     response = await fetch(`${API_BASE_URL}${path}`, {

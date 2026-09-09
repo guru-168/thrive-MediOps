@@ -25,8 +25,19 @@ class Settings(BaseSettings):
 
     # Comma-separated list of origins allowed to call this API (Vite dev
     # server origins by default). Configure via ALLOWED_ORIGINS for other
-    # environments rather than widening this in code.
+    # environments rather than widening this in code. In production set it
+    # to the deployed frontend's exact origin, e.g.
+    # ALLOWED_ORIGINS=https://mediops.vercel.app
     allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost:5175,http://127.0.0.1:5175"
+
+    # Optional regex for origins that cannot be enumerated ahead of time -
+    # specifically Vercel preview deployments, whose hostname changes with
+    # every branch/commit. Empty by default, so behaviour is unchanged
+    # unless it is explicitly configured. Anchor it and escape the dots:
+    #   ALLOWED_ORIGIN_REGEX=^https://mediops-[a-z0-9-]+\.vercel\.app$
+    # Never set this to something that matches any host - it is an
+    # allow-list, not a wildcard.
+    allowed_origin_regex: str = ""
 
 
     # Where the trained model artifact will be dropped in. See
